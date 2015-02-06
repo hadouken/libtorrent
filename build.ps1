@@ -19,6 +19,12 @@ $7ZIP_TOOL         = Join-Path $7ZIP_DIRECTORY "7za.exe"
 $7ZIP_PACKAGE_FILE = "7za$($7ZIP_VERSION.replace('.', '')).zip"
 $7ZIP_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/sevenzip/7-Zip/$7ZIP_VERSION/$7ZIP_PACKAGE_FILE"
 
+# Boost configuration section
+$BOOST_VERSION      = "1.57.0"
+$BOOST_DIRECTORY    = Join-Path $PACKAGES_DIRECTORY "boost_$($BOOST_VERSION.replace('.', '_'))"
+$BOOST_PACKAGE_FILE = "boost_$($BOOST_VERSION.replace('.', '_')).zip"
+$BOOST_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/boost/boost/$BOOST_VERSION/$BOOST_PACKAGE_FILE"
+
 # Libtorrent configuration section
 $LIBTORRENT_VERSION      = "1.0.3"
 $LIBTORRENT_DIRECTORY    = Join-Path $PACKAGES_DIRECTORY "libtorrent-rasterbar-$LIBTORRENT_VERSION"
@@ -79,6 +85,12 @@ if (!(Test-Path (Join-Path $PACKAGES_DIRECTORY $7ZIP_PACKAGE_FILE))) {
     Download-File $7ZIP_DOWNLOAD_URL (Join-Path $PACKAGES_DIRECTORY $7ZIP_PACKAGE_FILE)
 }
 
+# Download Boost
+if (!(Test-Path (Join-Path $PACKAGES_DIRECTORY $BOOST_PACKAGE_FILE))) {
+    Write-Host "Downloading $BOOST_PACKAGE_FILE"
+    Download-File $BOOST_DOWNLOAD_URL (Join-Path $PACKAGES_DIRECTORY $BOOST_PACKAGE_FILE)
+}
+
 # Download Libtorrent
 if (!(Test-Path (Join-Path $PACKAGES_DIRECTORY $LIBTORRENT_PACKAGE_FILE))) {
     Write-Host "Downloading $LIBTORRENT_PACKAGE_FILE"
@@ -95,6 +107,12 @@ if (!(Test-Path $NUGET_TOOL)) {
 if (!(Test-Path $7ZIP_DIRECTORY)) {
     Write-Host "Unpacking $7ZIP_PACKAGE_FILE"
     Extract-File (Join-Path $PACKAGES_DIRECTORY $7ZIP_PACKAGE_FILE) $7ZIP_DIRECTORY
+}
+
+# Unpack Boost (may take a while)
+if (!(Test-Path $BOOST_DIRECTORY)) {
+    Write-Host "Unpacking $BOOST_PACKAGE_FILE (this may take a while)"
+    Extract-File (Join-Path $PACKAGES_DIRECTORY $BOOST_PACKAGE_FILE) $PACKAGES_DIRECTORY
 }
 
 # Unpack Libtorrent
@@ -126,7 +144,7 @@ function Compile-Libtorrent {
     $openssl_include = Join-Path $OPENSSL_PACKAGE_DIRECTORY "$platform/$configuration/include"
     $openssl_lib = Join-Path $OPENSSL_PACKAGE_DIRECTORY "$platform/$configuration/lib"
 
-    Start-Process "$b2" -ArgumentList "toolset=msvc-12.0 include=""$boost_include"" include=""$openssl_include"" library-path=""$boost_lib"" library-path=""$openssl_lib"" variant=$configuration boost=system boost-link=shared dht=on i2p=on encryption=openssl link=shared runtime-link=shared deprecated-functions=off" -Wait -NoNewWindow
+    Start-Process "$b2" -ArgumentList "-sBOOST_ROOT=""$BOOST_DIRECTORY"" toolset=msvc-12.0 include=""$boost_include"" include=""$openssl_include"" library-path=""$boost_lib"" library-path=""$openssl_lib"" variant=$configuration boost=system boost-link=shared dht=on i2p=on encryption=openssl link=shared runtime-link=shared deprecated-functions=off" -Wait -NoNewWindow
 
     popd
 }
