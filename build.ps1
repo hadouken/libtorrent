@@ -21,7 +21,7 @@ $7ZIP_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/sevenzip/7-Zip/$7
 # Boost configuration section
 $BOOST_VERSION      = "1.57.0"
 $BOOST_DIRECTORY    = Join-Path $PACKAGES_DIRECTORY "boost_$($BOOST_VERSION.replace('.', '_'))"
-$BOOST_PACKAGE_FILE = "boost_$($BOOST_VERSION.replace('.', '_')).zip"
+$BOOST_PACKAGE_FILE = "boost_$($BOOST_VERSION.replace('.', '_')).7z"
 $BOOST_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/boost/boost/$BOOST_VERSION/$BOOST_PACKAGE_FILE"
 
 # Libtorrent configuration section
@@ -93,7 +93,8 @@ if (!(Test-Path $7ZIP_DIRECTORY)) {
 # Unpack Boost (may take a while)
 if (!(Test-Path $BOOST_DIRECTORY)) {
     Write-Host "Unpacking $BOOST_PACKAGE_FILE (this may take a while)"
-    Extract-File (Join-Path $PACKAGES_DIRECTORY $BOOST_PACKAGE_FILE) $PACKAGES_DIRECTORY
+    $pkg = Join-Path $PACKAGES_DIRECTORY $BOOST_PACKAGE_FILE
+    & "$7ZIP_TOOL" x $pkg -o"$PACKAGES_DIRECTORY"
 }
 
 # Unpack Libtorrent
