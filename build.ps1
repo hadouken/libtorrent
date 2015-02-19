@@ -5,7 +5,6 @@ $PACKAGES_DIRECTORY = Join-Path $PSScriptRoot "packages"
 $OUTPUT_DIRECTORY   = Join-Path $PSScriptRoot "bin"
 $VERSION            = "0.0.0"
 
-$BOOST_PACKAGE_DIRECTORY   = Join-Path $PACKAGES_DIRECTORY "hadouken.boost.0.1.5"
 $OPENSSL_PACKAGE_DIRECTORY = Join-Path $PACKAGES_DIRECTORY "hadouken.openssl.0.1.3"
 
 if (Test-Path Env:\APPVEYOR_BUILD_VERSION) {
@@ -55,24 +54,6 @@ function Extract-File {
     [System.Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem') | Out-Null
     [System.IO.Compression.ZipFile]::ExtractToDirectory($file, $target)
 }
-
-function Load-DevelopmentTools {
-    # Set environment variables for Visual Studio Command Prompt
-    
-    pushd "c:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
-    
-    cmd /c "vcvarsall.bat&set" |
-    foreach {
-        if ($_ -match "=") {
-            $v = $_.split("="); set-item -force -path "ENV:\$($v[0])"  -value "$($v[1])"
-        }
-    }
-    
-    popd
-}
-
-# Get our dev tools
-Load-DevelopmentTools
 
 # Create packages directory if it does not exist
 if (!(Test-Path $PACKAGES_DIRECTORY)) {
@@ -124,9 +105,23 @@ if (!(Test-Path $LIBTORRENT_DIRECTORY)) {
     & "$7ZIP_TOOL" x $tmp.replace('.gz', '') -o"$PACKAGES_DIRECTORY"
 }
 
-# Install support packages Boost and OpenSSL
-& "$NUGET_TOOL" install hadouken.boost -Version 0.1.5 -OutputDirectory "$PACKAGES_DIRECTORY"
+# Install support package OpenSSL
 & "$NUGET_TOOL" install hadouken.openssl -Version 0.1.3 -OutputDirectory "$PACKAGES_DIRECTORY"
+
+function Build-Boost {
+    Push-Location $BOOST_DIRECTORY
+
+    # Bootstrap Boost only if we do not have b2 already
+    if (!(Test-Path b2.exe)) {
+        cmd /c bootstrap.bat
+    }
+
+    Start-Process ".\b2.exe" -ArgumentList "toolset=msvc-12.0 link=shared runtime-link=shared --with-chrono --with-thread" -Wait -NoNewWindow
+
+    Pop-Location
+}
+
+Build-Boost
 
 function Compile-Libtorrent {
     param (
@@ -134,19 +129,16 @@ function Compile-Libtorrent {
         [string]$configuration
     )
 
-    pushd $LIBTORRENT_DIRECTORY
+    Push-Location $LIBTORRENT_DIRECTORY
 
-    $b2 = Join-Path $BOOST_PACKAGE_DIRECTORY "tools/b2.exe"
-
-    $boost_include = Join-Path $BOOST_PACKAGE_DIRECTORY "include"
-    $boost_lib = Join-Path $BOOST_PACKAGE_DIRECTORY "$platform/$configuration/lib"
+    $b2 = Join-Path $BOOST_DIRECTORY "b2.exe"
 
     $openssl_include = Join-Path $OPENSSL_PACKAGE_DIRECTORY "$platform/$configuration/include"
     $openssl_lib = Join-Path $OPENSSL_PACKAGE_DIRECTORY "$platform/$configuration/lib"
 
-    Start-Process "$b2" -ArgumentList "-sBOOST_ROOT=""$BOOST_DIRECTORY"" toolset=msvc-12.0 include=""$boost_include"" include=""$openssl_include"" library-path=""$boost_lib"" library-path=""$openssl_lib"" variant=$configuration boost=system boost-link=shared dht=on i2p=on encryption=openssl link=shared runtime-link=shared deprecated-functions=off" -Wait -NoNewWindow
+    Start-Process "$b2" -ArgumentList "-sBOOST_ROOT=""$BOOST_DIRECTORY"" toolset=msvc-12.0 include=""$openssl_include"" library-path=""$openssl_lib"" variant=$configuration boost=source boost-link=shared dht=on i2p=on encryption=openssl link=shared runtime-link=shared deprecated-functions=off debug-symbols=on" -Wait -NoNewWindow
 
-    popd
+    Pop-Location
 }
 
 function Output-Libtorrent {
@@ -158,13 +150,57 @@ function Output-Libtorrent {
     pushd $LIBTORRENT_DIRECTORY
 
     $t = Join-Path $OUTPUT_DIRECTORY "$platform\$configuration"
+    $out = "bin\msvc-12.0\$configuration\boost-link-shared\boost-source\deprecated-functions-off\encryption-openssl\threading-multi"
+
+    if ($configuration -eq "release")
+    {
+        $out = "bin\msvc-12.0\$configuration\boost-link-shared\boost-source\debug-symbols-on\deprecated-functions-off\encryption-openssl\threading-multi"
+    }
 
     # Copy output files
-    xcopy /y bin\msvc-12.0\$configuration\boost-link-shared\deprecated-functions-off\encryption-openssl\threading-multi\*.lib "$t\lib\*"
-    xcopy /y bin\msvc-12.0\$configuration\boost-link-shared\deprecated-functions-off\encryption-openssl\threading-multi\*.dll "$t\bin\*"
-    xcopy /y include\* "$t\include\*" /E
+    xcopy /y "$out\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+    xcopy /y "$out\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "$out\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
 
     popd
+}
+
+function Output-Boost {
+    param (
+        [string]$platform,
+        [string]$configuration
+    )
+
+    Push-Location $BOOST_DIRECTORY
+
+    # Copy chrono
+    xcopy /y "bin.v2\libs\chrono\build\msvc-12.0\$configuration\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\chrono\build\msvc-12.0\$configuration\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\chrono\build\msvc-12.0\$configuration\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+
+    $extra = ""
+
+    if ($configuration -eq "release")
+    {
+        $extra = "debug-symbols-on\"
+    }
+
+    # Copy date_time
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+
+    # Copy system
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+
+    # Copy thread
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+
+    Pop-Location
 }
 
 Compile-Libtorrent "win32" "debug"
@@ -172,6 +208,13 @@ Output-Libtorrent  "win32" "debug"
 
 Compile-Libtorrent "win32" "release"
 Output-Libtorrent  "win32" "release"
+
+Output-Boost "win32" "debug"
+Output-Boost "win32" "release"
+
+# Output headers
+xcopy /y "$(Join-Path $LIBTORRENT_DIRECTORY include)\*" "$(Join-Path $OUTPUT_DIRECTORY win32\include)\*" /E
+xcopy /y "$(Join-Path $BOOST_DIRECTORY boost)\*" "$(Join-Path $OUTPUT_DIRECTORY win32\include)\boost\*" /E
 
 # Package with NuGet
 
