@@ -25,7 +25,7 @@ $BOOST_PACKAGE_FILE = "boost_$($BOOST_VERSION.replace('.', '_')).7z"
 $BOOST_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/boost/boost/$BOOST_VERSION/$BOOST_PACKAGE_FILE"
 
 # Libtorrent configuration section
-$LIBTORRENT_VERSION      = "1.0.3"
+$LIBTORRENT_VERSION      = "1.0.4"
 $LIBTORRENT_DIRECTORY    = Join-Path $PACKAGES_DIRECTORY "libtorrent-rasterbar-$LIBTORRENT_VERSION"
 $LIBTORRENT_PACKAGE_FILE = "libtorrent-rasterbar-$LIBTORRENT_VERSION.tar.gz"
 $LIBTORRENT_DOWNLOAD_URL = "http://downloads.sourceforge.net/project/libtorrent/libtorrent/$LIBTORRENT_PACKAGE_FILE"
@@ -179,6 +179,11 @@ function Output-Boost {
     xcopy /y "bin.v2\libs\chrono\build\msvc-12.0\$configuration\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
     xcopy /y "bin.v2\libs\chrono\build\msvc-12.0\$configuration\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
 
+    # Copy thread
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+
     $extra = ""
 
     if ($configuration -eq "release")
@@ -187,19 +192,14 @@ function Output-Boost {
     }
 
     # Copy date_time
-    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\date_time\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
 
     # Copy system
-    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
-
-    # Copy thread
-    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
-    xcopy /y "bin.v2\libs\thread\build\msvc-12.0\$configuration\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.dll" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.pdb" "$OUTPUT_DIRECTORY\$platform\bin\$configuration\*"
+    xcopy /y "bin.v2\libs\system\build\msvc-12.0\$configuration\boost-link-shared\boost-source\$($extra)deprecated-functions-off\encryption-openssl\threading-multi\*.lib" "$OUTPUT_DIRECTORY\$platform\lib\$configuration\*"
 
     Pop-Location
 }
